@@ -26,6 +26,8 @@ interface Produto {
   id: string;
   nome: string;
   preco: number;
+  categoria?: string;
+  descricao?: string;
 }
 
 const CORES = {
@@ -49,21 +51,23 @@ const CORES = {
 export default function App() {
   const [nome, setNome] = useState('');
   const [preco, setPreco] = useState('');
+  const [categoria, setCategoria] = useState('');
+  const [descricao, setDescricao] = useState('');
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [carregando, setCarregando] = useState(false);
   const [adicionando, setAdicionando] = useState(false);
   const [pressedButton, setPressedButton] = useState<string | null>(null);
 
   async function adicionarProduto() {
-    if (nome.trim() === '' || preco.trim() === '') {
-      Alert.alert('⚠️ Atenção', 'Preencha o nome e o preço');
+    if (nome.trim() === '' || preco.trim() === '' || categoria.trim() === '') {
+      Alert.alert('⚠️ Atenção', 'Preencha nome, preço e categoria');
       return;
     }
 
     const precoNumerico = parseFloat(preco);
 
     if (precoNumerico <= 0 || isNaN(precoNumerico)) {
-      Alert.alert('❌ Erro', 'Digite um preço válido');
+      Alert.alert('❌ Erro', 'Digite um preço válido (maior que zero)');
       return;
     }
 
@@ -72,11 +76,15 @@ export default function App() {
       await addDoc(collection(db, 'products'), {
         nome: nome.trim(),
         preco: precoNumerico,
+        categoria: categoria.trim(),
+        descricao: descricao.trim() || 'Sem descrição',
         criadoEm: new Date().toISOString(),
       });
 
       setNome('');
       setPreco('');
+      setCategoria('');
+      setDescricao('');
       await buscarProdutos();
       Alert.alert('✅ Sucesso', 'Produto cadastrado com sucesso!');
     } catch (error) {
@@ -98,6 +106,8 @@ export default function App() {
           id: docItem.id,
           nome: docItem.data().nome,
           preco: docItem.data().preco,
+          categoria: docItem.data().categoria || 'Sem categoria',
+          descricao: docItem.data().descricao || 'Sem descrição',
         });
       });
 
@@ -152,6 +162,41 @@ export default function App() {
     }
   }
 
+  async function editarPrecoCustomizado(id: string, nomeProduto: string, precoAtual: number) {
+    Alert.prompt(
+      '💰 Editar Preço',
+      `Digite o novo preço para "${nomeProduto}"\n(Atual: R$ ${precoAtual.toFixed(2).replace('.', ',')})`,
+      [
+        { text: 'Cancelar', onPress: () => {}, style: 'cancel' },
+        {
+          text: 'Atualizar',
+          onPress: async (novoPrecoStr) => {
+            const novoPreco = parseFloat(novoPrecoStr || '0');
+
+            if (novoPreco <= 0 || isNaN(novoPreco)) {
+              Alert.alert('❌ Erro', 'Digite um preço válido (maior que zero)');
+              return;
+            }
+
+            try {
+              await updateDoc(doc(db, 'products', id), {
+                preco: parseFloat(novoPreco.toFixed(2)),
+                atualizadoEm: new Date().toISOString(),
+              });
+              await buscarProdutos();
+              Alert.alert('✅ Sucesso', `Preço atualizado para R$ ${novoPreco.toFixed(2).replace('.', ',')}`);
+            } catch (error) {
+              Alert.alert('❌ Erro', 'Falha ao atualizar preço');
+              console.error(error);
+            }
+          },
+        },
+      ],
+      'plain-text',
+      precoAtual.toString()
+    );
+  }
+
   useEffect(() => {
     buscarProdutos();
   }, []);
@@ -159,7 +204,6 @@ export default function App() {
   return (
     <View style={styles.container}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Header com Gradiente */}
         <View style={styles.header}>
           <View style={styles.headerContent}>
             <Text style={styles.titulo}>FoodExpress</Text>
@@ -180,7 +224,6 @@ export default function App() {
           </View>
         </View>
 
-        {/* Formulário */}
         <View style={styles.formulario}>
           <View style={styles.formularioHeader}>
             <Text style={styles.labelSecao}>➕ Novo Produto</Text>
@@ -218,6 +261,34 @@ export default function App() {
             />
           </View>
 
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>🏷️ Categoria</Text>
+            <TextInput
+              placeholder="Ex: Pizzas, Bebidas, Lanches"
+              value={categoria}
+              onChangeText={setCategoria}
+              style={styles.input}
+              editable={!adicionando}
+              placeholderTextColor={CORES.textoCinza}
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>📋 Descrição (Opcional)</Text>
+            <TextInput
+              placeholder="Ex: Pizza com queijo e tomate"
+              value={descricao}
+              onChangeText={setDescricao}
+              style={[styles.input, styles.inputMultiline]}
+              editable={!adicionando}
+              placeholderTextColor={CORES.textoCinza}
+              multiline={true}
+              numberOfLines={3}
+              maxLength={150}
+            />
+            <Text style={styles.contador}>{descricao.length}/150</Text>
+          </View>
+
           <TouchableOpacity
             style={[
               styles.botaoCadastrar,
@@ -240,7 +311,6 @@ export default function App() {
           </TouchableOpacity>
         </View>
 
-        {/* Lista de Produtos */}
         <View style={styles.secaoLista}>
           <View style={styles.headerLista}>
             <View>
@@ -290,6 +360,8 @@ export default function App() {
                     </View>
                     <View style={styles.infosProduto}>
                       <Text style={styles.nomeProduto}>{item.nome}</Text>
+                      <Text style={styles.categoriaBadge}>🏷️ {item.categoria}</Text>
+                      <Text style={styles.descricaoProduto}>{item.descricao}</Text>
                       <View style={styles.precoContainer}>
                         <Text style={styles.precoProduto}>
                           R$ {item.preco.toFixed(2).replace('.', ',')}
@@ -317,6 +389,18 @@ export default function App() {
                     <TouchableOpacity
                       style={[
                         styles.botaoAcao,
+                        pressedButton === `edit-${item.id}` && styles.botaoAcaoPressionado,
+                      ]}
+                      onPress={() => editarPrecoCustomizado(item.id, item.nome, item.preco)}
+                      onPressIn={() => setPressedButton(`edit-${item.id}`)}
+                      onPressOut={() => setPressedButton(null)}
+                    >
+                      <Text style={styles.textoAcao}>✏️ Editar</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.botaoAcao,
                         styles.botaoPerigo,
                         pressedButton === `delete-${item.id}` && styles.botaoPerigoPressionado,
                       ]}
@@ -333,9 +417,8 @@ export default function App() {
           )}
         </View>
 
-        {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Versão 1.2</Text>
+          <Text style={styles.footerText}> FoodExpress • Versão 1.3</Text>
         </View>
       </ScrollView>
     </View>
@@ -468,6 +551,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: 'rgba(255,255,255,0.05)',
     color: CORES.texto,
+  },
+  inputMultiline: {
+    textAlignVertical: 'top',
+    paddingTop: 12,
   },
   contador: {
     fontSize: 11,
@@ -603,6 +690,18 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: CORES.texto,
     marginBottom: 6,
+  },
+  categoriaBadge: {
+    fontSize: 12,
+    color: CORES.destaque,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  descricaoProduto: {
+    fontSize: 12,
+    color: CORES.textoCinza,
+    marginBottom: 8,
+    fontStyle: 'italic',
   },
   precoContainer: {
     flexDirection: 'row',
