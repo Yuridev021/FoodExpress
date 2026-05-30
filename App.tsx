@@ -116,13 +116,20 @@ export default function App() {
       {
         text: 'Remover',
         onPress: async () => {
+          setCarregando(true);
           try {
-            await deleteDoc(doc(db, 'products', id));
+            console.log('Deletando produto com ID:', id);
+            const docRef = doc(db, 'products', id);
+            console.log('Referência do documento:', docRef);
+            await deleteDoc(docRef);
+            console.log('Produto deletado com sucesso');
             await buscarProdutos();
-            Alert.alert('✅ Sucesso', 'Produto removido');
+            Alert.alert('✅ Sucesso', 'Produto removido com sucesso!');
           } catch (error) {
-            Alert.alert('❌ Erro', 'Falha ao remover produto');
-            console.error(error);
+            console.error('Erro ao remover produto:', error);
+            Alert.alert('❌ Erro', `Falha ao remover produto: ${error}`);
+          } finally {
+            setCarregando(false);
           }
         },
         style: 'destructive',
