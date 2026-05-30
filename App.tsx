@@ -29,7 +29,7 @@ interface Produto {
 }
 
 const CORES = {
-  gradiente1: '#FF6B6B',
+  gradiente1: '#3FADD6',
   gradiente2: '#FF8E53',
   gradiente3: '#FFA500',
   primaria: '#007AFF',
@@ -335,8 +335,7 @@ export default function App() {
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>✨ FoodExpress • Versão 1.0</Text>
-          <Text style={styles.footerSubtext}>Feito com ❤️ para você</Text>
+          <Text style={styles.footerText}>Versão 1.2</Text>
         </View>
       </ScrollView>
     </View>
@@ -358,7 +357,7 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
     overflow: 'hidden',
-    backgroundColor: '#FF8E53',
+    backgroundColor: '#3FADD6',
   },
   headerContent: {
     alignItems: 'center',
